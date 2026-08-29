@@ -17,3 +17,5 @@ secrets.tfvars
 .DS_Store
 
 # NOTE: .terraform.lock.hcl SHOULD be committed. Do not ignore it.
+setup-stage*.sh
+fix-stage*.sh
