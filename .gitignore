@@ -1,0 +1,19 @@
+# Terraform state - NEVER commit these
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+
+# Secrets
+*.auto.tfvars
+secrets.tfvars
+.env
+*.pem
+*.key
+
+# OS noise
+.DS_Store
+
+# NOTE: .terraform.lock.hcl SHOULD be committed. Do not ignore it.
