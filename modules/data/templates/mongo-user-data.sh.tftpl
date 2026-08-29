@@ -1,0 +1,65 @@
+#!/bin/bash
+set -uxo pipefail
+exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+echo "=== MongoDB bootstrap starting ==="
+
+dnf update -y
+dnf install -y docker openssl
+command -v aws >/dev/null 2>&1 || dnf install -y awscli-2 || true
+
+systemctl enable --now docker
+
+# Find our own private IP via IMDSv2. The replica set member has to be
+# registered under an address the backend can actually dial.
+TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+PRIVATE_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/local-ipv4)
+echo "Private IP is $PRIVATE_IP"
+
+MONGO_USER="${mongo_user}"
+MONGO_PASS=$(aws ssm get-parameter \
+  --name "${mongo_password_param}" \
+  --with-decryption \
+  --region "${region}" \
+  --query 'Parameter.Value' \
+  --output text)
+
+# MongoDB requires a shared keyfile for internal authentication as soon as
+# both replication and access control are switched on.
+mkdir -p /opt/mongo/keyfile /opt/mongo/data
+openssl rand -base64 756 > /opt/mongo/keyfile/mongodb.key
+chmod 400 /opt/mongo/keyfile/mongodb.key
+chown 999:999 /opt/mongo/keyfile/mongodb.key
+chown -R 999:999 /opt/mongo/data
+
+docker run -d --name mongodb --restart unless-stopped \
+  -p 27017:27017 \
+  -v /opt/mongo/data:/data/db \
+  -v /opt/mongo/keyfile:/data/keyfile:ro \
+  -e MONGO_INITDB_ROOT_USERNAME="$MONGO_USER" \
+  -e MONGO_INITDB_ROOT_PASSWORD="$MONGO_PASS" \
+  mongo:8.0 \
+  --replSet rs0 --bind_ip_all --keyFile /data/keyfile/mongodb.key
+
+echo "Waiting for mongod to accept connections..."
+for i in $(seq 1 60); do
+  if docker exec mongodb mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; then
+    echo "mongod is up"
+    break
+  fi
+  sleep 5
+done
+
+echo "Initiating replica set..."
+docker exec mongodb mongosh \
+  -u "$MONGO_USER" -p "$MONGO_PASS" --authenticationDatabase admin --quiet \
+  --eval "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: '$PRIVATE_IP:27017'}]}) }"
+
+sleep 10
+docker exec mongodb mongosh \
+  -u "$MONGO_USER" -p "$MONGO_PASS" --authenticationDatabase admin --quiet \
+  --eval "rs.status().myState"
+
+echo "=== MongoDB bootstrap finished ==="

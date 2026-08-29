@@ -1,0 +1,186 @@
+#!/bin/bash
+# Shell tracing is deliberately OFF: this script handles secrets.
+set -uo pipefail
+exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+echo "=== Backend bootstrap starting ==="
+
+dnf update -y
+dnf install -y git tar gzip amazon-cloudwatch-agent
+command -v aws >/dev/null 2>&1 || dnf install -y awscli-2 || true
+
+useradd --system --no-create-home --shell /sbin/nologin muchtodo || true
+mkdir -p /opt/much-to-do /var/log/much-to-do
+chown muchtodo:muchtodo /var/log/much-to-do
+
+# -------------------------------------------------------------------------
+# refresh-config.sh
+#
+# Writes the .env file the application reads at startup. This has to be a
+# real file rather than exported environment variables: the app loads its
+# config with Viper, and Viper only maps environment variables onto fields
+# it already knows about from a config file or a default. MONGO_URI and
+# JWT_SECRET_KEY have neither, so without this file they arrive empty and
+# the process exits.
+# -------------------------------------------------------------------------
+cat > /opt/much-to-do/refresh-config.sh << 'CONFIGEOF'
+#!/bin/bash
+set -uo pipefail
+
+REGION="__REGION__"
+PREFIX="__PREFIX__"
+
+param() {
+  aws ssm get-parameter --name "$1" --with-decryption \
+    --region "$REGION" --query 'Parameter.Value' --output text
+}
+
+MONGO_URI=$(param "/$PREFIX/app/mongo_uri")
+DB_NAME=$(param "/$PREFIX/app/db_name")
+JWT_SECRET=$(param "/$PREFIX/app/jwt_secret")
+REDIS_ADDR=$(param "/$PREFIX/app/redis_addr")
+PUBLIC_ORIGIN=$(param "/$PREFIX/app/public_origin")
+COOKIE_DOMAIN=$(param "/$PREFIX/app/cookie_domain")
+SECURE_COOKIE=$(param "/$PREFIX/app/secure_cookie")
+
+umask 077
+cat > /opt/much-to-do/.env << ENVEOF
+PORT=__APP_PORT__
+MONGO_URI=$MONGO_URI
+DB_NAME=$DB_NAME
+JWT_SECRET_KEY=$JWT_SECRET
+JWT_EXPIRATION_HOURS=72
+ENABLE_CACHE=true
+REDIS_ADDR=$REDIS_ADDR
+REDIS_PASSWORD=
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+ALLOWED_ORIGINS=$PUBLIC_ORIGIN
+COOKIE_DOMAINS=$COOKIE_DOMAIN
+SECURE_COOKIE=$SECURE_COOKIE
+ENVEOF
+
+chown muchtodo:muchtodo /opt/much-to-do/.env
+chmod 600 /opt/much-to-do/.env
+echo "config refreshed"
+CONFIGEOF
+
+sed -i "s|__REGION__|${region}|g; s|__PREFIX__|${project_name}|g; s|__APP_PORT__|${app_port}|g" \
+  /opt/much-to-do/refresh-config.sh
+chmod 700 /opt/much-to-do/refresh-config.sh
+
+# -------------------------------------------------------------------------
+# deploy.sh - used by the CI/CD pipeline through SSM Run Command
+# -------------------------------------------------------------------------
+cat > /opt/much-to-do/deploy.sh << 'DEPLOYEOF'
+#!/bin/bash
+set -euo pipefail
+
+BUCKET="__BUCKET__"
+KEY="backend/much-to-do"
+
+aws s3 cp "s3://$BUCKET/$KEY" /opt/much-to-do/much-to-do.new
+chmod 755 /opt/much-to-do/much-to-do.new
+mv /opt/much-to-do/much-to-do.new /opt/much-to-do/much-to-do
+chown muchtodo:muchtodo /opt/much-to-do/much-to-do
+
+/opt/much-to-do/refresh-config.sh
+systemctl restart much-to-do
+echo "deployed"
+DEPLOYEOF
+
+sed -i "s|__BUCKET__|${artifacts_bucket}|g" /opt/much-to-do/deploy.sh
+chmod 700 /opt/much-to-do/deploy.sh
+
+# -------------------------------------------------------------------------
+# systemd unit. stdout and stderr go to a file so the CloudWatch agent can
+# tail it.
+# -------------------------------------------------------------------------
+cat > /etc/systemd/system/much-to-do.service << 'UNITEOF'
+[Unit]
+Description=Much-to-Do API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=muchtodo
+WorkingDirectory=/opt/much-to-do
+ExecStart=/opt/much-to-do/much-to-do
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/much-to-do/app.log
+StandardError=append:/var/log/much-to-do/app.log
+
+[Install]
+WantedBy=multi-user.target
+UNITEOF
+
+# -------------------------------------------------------------------------
+# CloudWatch agent
+# -------------------------------------------------------------------------
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWEOF'
+{
+  "agent": { "run_as_user": "root" },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/much-to-do/app.log",
+            "log_group_name": "__LOG_GROUP__",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/user-data.log",
+            "log_group_name": "__BOOTSTRAP_GROUP__",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+CWEOF
+
+sed -i "s|__LOG_GROUP__|${log_group}|g; s|__BOOTSTRAP_GROUP__|${bootstrap_group}|g" \
+  /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+# -------------------------------------------------------------------------
+# First build. Later deployments come from S3 via the pipeline instead.
+# -------------------------------------------------------------------------
+echo "Installing Go ${go_version}..."
+curl -sSL "https://go.dev/dl/go${go_version}.linux-amd64.tar.gz" -o /tmp/go.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzf /tmp/go.tar.gz
+
+echo "Cloning application..."
+rm -rf /tmp/app
+git clone --depth 1 --branch "${repo_branch}" "${repo_url}" /tmp/app
+
+echo "Building backend..."
+cd /tmp/app/Server/MuchToDo
+export HOME=/root
+export GOPATH=/root/go
+export GOMODCACHE=/root/go/pkg/mod
+export GOCACHE=/root/.cache/go-build
+/usr/local/go/bin/go build -o /opt/much-to-do/much-to-do ./cmd/api/main.go
+chown muchtodo:muchtodo /opt/much-to-do/much-to-do
+chmod 755 /opt/much-to-do/much-to-do
+
+echo "Writing configuration..."
+/opt/much-to-do/refresh-config.sh
+
+echo "Starting service..."
+systemctl daemon-reload
+systemctl enable --now much-to-do
+sleep 5
+systemctl is-active much-to-do
+
+echo "=== Backend bootstrap finished ==="

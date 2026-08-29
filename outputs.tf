@@ -17,3 +17,53 @@ output "nat_gateway_public_ips" {
   description = "Public IPs private instances appear as when calling out."
   value       = module.network.nat_gateway_public_ips
 }
+
+output "mongo_instance_id" {
+  description = "Instance ID of the MongoDB host."
+  value       = module.data.mongo_instance_id
+}
+
+output "redis_primary_endpoint" {
+  description = "Redis endpoint the backend connects to."
+  value       = module.data.redis_primary_endpoint
+}
+
+output "alb_dns_name" {
+  description = "Public DNS name of the load balancer."
+  value       = module.compute.alb_dns_name
+}
+
+output "app_instance_ids" {
+  description = "Instance IDs of the two backend servers."
+  value       = module.compute.instance_ids
+}
+
+output "artifacts_bucket" {
+  description = "S3 bucket the CI/CD pipeline uploads backend builds to."
+  value       = module.compute.artifacts_bucket
+}
+
+output "log_group_name" {
+  description = "CloudWatch log group holding application logs."
+  value       = module.compute.log_group_name
+}
+
+##############################################################################
+# The three values below are what the CI/CD pipelines and the submission
+# document need.
+##############################################################################
+
+output "live_url" {
+  description = "THE LIVE APPLICATION URL - submit this one."
+  value       = "https://${module.frontend.cloudfront_domain_name}"
+}
+
+output "frontend_bucket" {
+  description = "S3 bucket the built React app is uploaded to."
+  value       = module.frontend.bucket_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "Distribution ID, used to invalidate the cache after a deploy."
+  value       = module.frontend.distribution_id
+}
