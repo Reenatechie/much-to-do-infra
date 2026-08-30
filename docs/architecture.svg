@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1080" width="1500" height="1080" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#37474f"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#1565c0"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#2e7d32"/>
+    </marker>
+  </defs>
+
+  <rect width="1500" height="1080" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="46" font-size="26" font-weight="bold" fill="#16232c">Much-to-Do — AWS Production Architecture</text>
+  <text x="40" y="72" font-size="14" fill="#5c6b73">Region eu-west-1 (Ireland) · Provisioned entirely with Terraform · Remote state in S3 with DynamoDB locking</text>
+
+  <!-- ============ INTERNET / USERS ============ -->
+  <rect x="40" y="105" width="200" height="66" rx="8" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5"/>
+  <text x="140" y="132" font-size="15" font-weight="bold" text-anchor="middle" fill="#16232c">Users</text>
+  <text x="140" y="152" font-size="12" text-anchor="middle" fill="#5c6b73">Browser · HTTPS</text>
+
+  <!-- ============ CLOUDFRONT ============ -->
+  <rect x="330" y="95" width="470" height="130" rx="8" fill="#ede7f6" stroke="#7e57c2" stroke-width="2"/>
+  <text x="565" y="122" font-size="16" font-weight="bold" text-anchor="middle" fill="#4527a0">Amazon CloudFront</text>
+  <text x="565" y="141" font-size="11.5" text-anchor="middle" fill="#5e35b1">ddfn0bw9wn16q.cloudfront.net · TLS via default certificate</text>
+
+  <rect x="348" y="153" width="205" height="58" rx="6" fill="#ffffff" stroke="#9575cd"/>
+  <text x="450" y="173" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#4527a0">Default behaviour  ( * )</text>
+  <text x="450" y="190" font-size="11" text-anchor="middle" fill="#5c6b73">→ S3 origin · caching on</text>
+  <text x="450" y="204" font-size="11" text-anchor="middle" fill="#5c6b73">Function: SPA deep-link rewrite</text>
+
+  <rect x="575" y="153" width="207" height="58" rx="6" fill="#ffffff" stroke="#9575cd"/>
+  <text x="678" y="173" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#4527a0">Behaviour  /api/*</text>
+  <text x="678" y="190" font-size="11" text-anchor="middle" fill="#5c6b73">→ ALB origin · caching disabled</text>
+  <text x="678" y="204" font-size="11" text-anchor="middle" fill="#5c6b73">Function: strips /api prefix</text>
+
+  <!-- users -> cloudfront -->
+  <line x1="240" y1="138" x2="325" y2="150" stroke="#37474f" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ============ S3 STATIC SITE ============ -->
+  <rect x="60" y="255" width="245" height="96" rx="8" fill="#e8f5e9" stroke="#43a047" stroke-width="2"/>
+  <text x="182" y="281" font-size="15" font-weight="bold" text-anchor="middle" fill="#1b5e20">S3 — Static Site</text>
+  <text x="182" y="301" font-size="11.5" text-anchor="middle" fill="#2e7d32">much-to-do-frontend-743204764365</text>
+  <text x="182" y="319" font-size="11" text-anchor="middle" fill="#5c6b73">Private bucket · no public access</text>
+  <text x="182" y="336" font-size="11" text-anchor="middle" fill="#5c6b73">Read only via Origin Access Control</text>
+
+  <path d="M 420 213 L 420 240 L 182 240 L 182 251" fill="none" stroke="#2e7d32" stroke-width="2" marker-end="url(#arrowGreen)"/>
+  <text x="250" y="234" font-size="11" fill="#2e7d32">React build (OAC, SigV4)</text>
+
+  <!-- ============ VPC ============ -->
+  <rect x="330" y="255" width="1130" height="700" rx="10" fill="#f5f8fa" stroke="#1565c0" stroke-width="2.5"/>
+  <text x="348" y="281" font-size="16" font-weight="bold" fill="#0d47a1">VPC  10.0.0.0/16</text>
+  <text x="348" y="299" font-size="11.5" fill="#5c6b73">vpc-0b63fcec839a05d48 · DNS hostnames and resolution enabled</text>
+
+  <!-- Internet Gateway -->
+  <rect x="1180" y="268" width="255" height="44" rx="6" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/>
+  <text x="1307" y="288" font-size="13" font-weight="bold" text-anchor="middle" fill="#e65100">Internet Gateway</text>
+  <text x="1307" y="304" font-size="10.5" text-anchor="middle" fill="#8d6e63">Ingress for public subnets · egress for NAT</text>
+
+  <!-- AZ A -->
+  <rect x="352" y="326" width="540" height="608" rx="8" fill="#ffffff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="370" y="350" font-size="14" font-weight="bold" fill="#37474f">Availability Zone  eu-west-1a</text>
+
+  <!-- AZ A public subnet -->
+  <rect x="370" y="364" width="504" height="118" rx="6" fill="#e3f2fd" stroke="#1e88e5" stroke-width="1.5"/>
+  <text x="386" y="386" font-size="12.5" font-weight="bold" fill="#0d47a1">Public subnet  10.0.0.0/24</text>
+
+  <rect x="388" y="396" width="228" height="70" rx="5" fill="#fff3e0" stroke="#fb8c00"/>
+  <text x="502" y="418" font-size="13" font-weight="bold" text-anchor="middle" fill="#e65100">Application Load Balancer</text>
+  <text x="502" y="435" font-size="10.5" text-anchor="middle" fill="#6d4c41">Listener :80 → target group :8080</text>
+  <text x="502" y="450" font-size="10.5" text-anchor="middle" fill="#6d4c41">Health check GET /health every 15s</text>
+  <text x="502" y="462" font-size="10" text-anchor="middle" fill="#8d6e63">(spans both AZs)</text>
+
+  <rect x="632" y="396" width="228" height="70" rx="5" fill="#fff8e1" stroke="#ffa000"/>
+  <text x="746" y="422" font-size="13" font-weight="bold" text-anchor="middle" fill="#e65100">NAT Gateway 1</text>
+  <text x="746" y="440" font-size="10.5" text-anchor="middle" fill="#6d4c41">Elastic IP 34.254.17.198</text>
+  <text x="746" y="455" font-size="10.5" text-anchor="middle" fill="#6d4c41">Outbound only</text>
+
+  <!-- AZ A private subnet -->
+  <rect x="370" y="498" width="504" height="418" rx="6" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.5"/>
+  <text x="386" y="520" font-size="12.5" font-weight="bold" fill="#33691e">Private subnet  10.0.10.0/24 · no inbound route from the internet</text>
+
+  <rect x="388" y="534" width="470" height="112" rx="5" fill="#ffffff" stroke="#f57c00" stroke-width="1.5"/>
+  <text x="623" y="558" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#e65100">EC2 — Backend 1  (t3.small)</text>
+  <text x="623" y="577" font-size="11" text-anchor="middle" fill="#5c6b73">Go API on :8080 · systemd unit much-to-do</text>
+  <text x="623" y="594" font-size="11" text-anchor="middle" fill="#5c6b73">Config written to .env from SSM Parameter Store at boot</text>
+  <text x="623" y="611" font-size="11" text-anchor="middle" fill="#5c6b73">CloudWatch Agent tails /var/log/much-to-do/app.log</text>
+  <text x="623" y="632" font-size="10.5" text-anchor="middle" fill="#8d6e63">Security group: inbound 8080 from the ALB only</text>
+
+  <rect x="388" y="666" width="470" height="112" rx="5" fill="#ffffff" stroke="#00838f" stroke-width="1.5"/>
+  <text x="623" y="690" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#006064">EC2 — MongoDB  (t3.small)</text>
+  <text x="623" y="709" font-size="11" text-anchor="middle" fill="#5c6b73">Docker mongo:8.0 · single-node replica set rs0</text>
+  <text x="623" y="726" font-size="11" text-anchor="middle" fill="#5c6b73">Replica set required: the API uses transactions</text>
+  <text x="623" y="743" font-size="11" text-anchor="middle" fill="#5c6b73">Keyfile internal auth · root password from SSM</text>
+  <text x="623" y="764" font-size="10.5" text-anchor="middle" fill="#8d6e63">Security group: inbound 27017 from the backend only</text>
+
+  <rect x="388" y="798" width="470" height="102" rx="5" fill="#ffffff" stroke="#c62828" stroke-width="1.5"/>
+  <text x="623" y="822" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#b71c1c">ElastiCache Redis — primary</text>
+  <text x="623" y="841" font-size="11" text-anchor="middle" fill="#5c6b73">cache.t4g.micro · Multi-AZ with automatic failover</text>
+  <text x="623" y="858" font-size="11" text-anchor="middle" fill="#5c6b73">much-to-do-redis.pw9hik.ng.0001.euw1.cache.amazonaws.com</text>
+  <text x="623" y="879" font-size="10.5" text-anchor="middle" fill="#8d6e63">Security group: inbound 6379 from the backend only</text>
+
+  <!-- AZ B -->
+  <rect x="908" y="326" width="540" height="608" rx="8" fill="#ffffff" stroke="#78909c" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="926" y="350" font-size="14" font-weight="bold" fill="#37474f">Availability Zone  eu-west-1b</text>
+
+  <!-- AZ B public subnet -->
+  <rect x="926" y="364" width="504" height="118" rx="6" fill="#e3f2fd" stroke="#1e88e5" stroke-width="1.5"/>
+  <text x="942" y="386" font-size="12.5" font-weight="bold" fill="#0d47a1">Public subnet  10.0.1.0/24</text>
+
+  <rect x="944" y="396" width="228" height="70" rx="5" fill="#fff3e0" stroke="#fb8c00" stroke-dasharray="4 3"/>
+  <text x="1058" y="426" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#e65100">ALB node</text>
+  <text x="1058" y="444" font-size="10.5" text-anchor="middle" fill="#6d4c41">Second AZ of the same</text>
+  <text x="1058" y="458" font-size="10.5" text-anchor="middle" fill="#6d4c41">load balancer</text>
+
+  <rect x="1188" y="396" width="228" height="70" rx="5" fill="#fff8e1" stroke="#ffa000"/>
+  <text x="1302" y="422" font-size="13" font-weight="bold" text-anchor="middle" fill="#e65100">NAT Gateway 2</text>
+  <text x="1302" y="440" font-size="10.5" text-anchor="middle" fill="#6d4c41">Elastic IP 52.212.23.167</text>
+  <text x="1302" y="455" font-size="10.5" text-anchor="middle" fill="#6d4c41">Outbound only</text>
+
+  <!-- AZ B private subnet -->
+  <rect x="926" y="498" width="504" height="418" rx="6" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.5"/>
+  <text x="942" y="520" font-size="12.5" font-weight="bold" fill="#33691e">Private subnet  10.0.11.0/24 · no inbound route from the internet</text>
+
+  <rect x="944" y="534" width="470" height="112" rx="5" fill="#ffffff" stroke="#f57c00" stroke-width="1.5"/>
+  <text x="1179" y="558" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#e65100">EC2 — Backend 2  (t3.small)</text>
+  <text x="1179" y="577" font-size="11" text-anchor="middle" fill="#5c6b73">Identical build · shares the JWT signing key via SSM</text>
+  <text x="1179" y="594" font-size="11" text-anchor="middle" fill="#5c6b73">so sessions survive routing to either instance</text>
+  <text x="1179" y="611" font-size="11" text-anchor="middle" fill="#5c6b73">CloudWatch Agent tails /var/log/much-to-do/app.log</text>
+  <text x="1179" y="632" font-size="10.5" text-anchor="middle" fill="#8d6e63">Security group: inbound 8080 from the ALB only</text>
+
+  <rect x="944" y="798" width="470" height="102" rx="5" fill="#ffffff" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="1179" y="826" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#b71c1c">ElastiCache Redis — replica</text>
+  <text x="1179" y="846" font-size="11" text-anchor="middle" fill="#5c6b73">Promoted automatically if the primary fails</text>
+  <text x="1179" y="866" font-size="11" text-anchor="middle" fill="#5c6b73">Same replication group, second AZ</text>
+
+  <!-- ============ FLOW ARROWS ============ -->
+  <!-- CloudFront /api -> ALB -->
+  <path d="M 678 213 L 678 300 L 560 300 L 560 392" fill="none" stroke="#1565c0" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <text x="690" y="272" font-size="11.5" fill="#1565c0">HTTP :80 — ALB security group accepts</text>
+  <text x="690" y="288" font-size="11.5" fill="#1565c0">only the CloudFront prefix list</text>
+
+  <!-- ALB -> backend 1 -->
+  <path d="M 470 468 L 470 530" fill="none" stroke="#37474f" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="392" y="494" font-size="10.5" fill="#37474f">:8080</text>
+
+  <!-- ALB -> backend 2 (long) -->
+  <path d="M 590 468 L 590 490 L 1179 490 L 1179 530" fill="none" stroke="#37474f" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="880" y="484" font-size="10.5" fill="#37474f">:8080</text>
+
+  <!-- backend1 -> mongo -->
+  <path d="M 480 648 L 480 662" fill="none" stroke="#00838f" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="492" y="660" font-size="10.5" fill="#00838f">27017</text>
+
+  <!-- backend1 -> redis -->
+  <path d="M 430 648 L 430 657 L 378 657 L 378 852 L 384 852" fill="none" stroke="#c62828" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="440" y="653" font-size="10.5" fill="#c62828">6379</text>
+
+  <!-- backend2 -> mongo (cross AZ) -->
+  <path d="M 1080 648 L 1080 720 L 862 720" fill="none" stroke="#00838f" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="900" y="714" font-size="10.5" fill="#00838f">27017 (cross-AZ)</text>
+
+  <!-- backend2 -> redis -->
+  <path d="M 1240 648 L 1240 760 L 880 760 L 880 830 L 862 830" fill="none" stroke="#c62828" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="960" y="754" font-size="10.5" fill="#c62828">6379 (cross-AZ)</text>
+
+  <!-- NAT egress -->
+  <path d="M 1302 396 L 1302 316" fill="none" stroke="#8d6e63" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="1312" y="360" font-size="10.5" fill="#8d6e63">egress</text>
+
+  <!-- ============ SIDE PANELS ============ -->
+  <!-- CloudWatch -->
+  <rect x="60" y="392" width="245" height="100" rx="8" fill="#fce4ec" stroke="#ad1457" stroke-width="2"/>
+  <text x="182" y="418" font-size="15" font-weight="bold" text-anchor="middle" fill="#880e4f">CloudWatch Logs</text>
+  <text x="182" y="440" font-size="11.5" text-anchor="middle" fill="#5c6b73">/much-to-do/backend</text>
+  <text x="182" y="457" font-size="11.5" text-anchor="middle" fill="#5c6b73">/much-to-do/bootstrap</text>
+  <text x="182" y="477" font-size="10.5" text-anchor="middle" fill="#8d6e63">One log stream per instance</text>
+  <path d="M 384 590 L 320 590 L 320 470 L 310 470" fill="none" stroke="#ad1457" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrow)"/>
+
+  <!-- SSM Parameter Store -->
+  <rect x="60" y="530" width="245" height="128" rx="8" fill="#e0f7fa" stroke="#00838f" stroke-width="2"/>
+  <text x="182" y="556" font-size="15" font-weight="bold" text-anchor="middle" fill="#006064">SSM Parameter Store</text>
+  <text x="182" y="578" font-size="11" text-anchor="middle" fill="#5c6b73">mongo_uri · jwt_secret  (SecureString)</text>
+  <text x="182" y="595" font-size="11" text-anchor="middle" fill="#5c6b73">redis_addr · db_name · cookie_domain</text>
+  <text x="182" y="612" font-size="11" text-anchor="middle" fill="#5c6b73">public_origin · secure_cookie</text>
+  <text x="182" y="633" font-size="10.5" text-anchor="middle" fill="#8d6e63">Read at boot by the instance IAM role.</text>
+  <text x="182" y="648" font-size="10.5" text-anchor="middle" fill="#8d6e63">No secret is ever committed to git.</text>
+
+  <!-- CI/CD -->
+  <rect x="60" y="694" width="245" height="206" rx="8" fill="#eceff1" stroke="#455a64" stroke-width="2"/>
+  <text x="182" y="720" font-size="15" font-weight="bold" text-anchor="middle" fill="#263238">GitHub Actions</text>
+  <text x="182" y="740" font-size="11" text-anchor="middle" fill="#5c6b73">Triggered on push to main</text>
+
+  <line x1="76" y1="752" x2="288" y2="752" stroke="#b0bec5"/>
+  <text x="182" y="772" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Frontend</text>
+  <text x="182" y="789" font-size="10.5" text-anchor="middle" fill="#5c6b73">npm ci → build → S3 sync</text>
+  <text x="182" y="804" font-size="10.5" text-anchor="middle" fill="#5c6b73">→ CloudFront invalidation</text>
+
+  <line x1="76" y1="816" x2="288" y2="816" stroke="#b0bec5"/>
+  <text x="182" y="836" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Backend — rolling update</text>
+  <text x="182" y="853" font-size="10.5" text-anchor="middle" fill="#5c6b73">go build → S3 artifact → per instance:</text>
+  <text x="182" y="868" font-size="10.5" text-anchor="middle" fill="#5c6b73">drain → SSM deploy → health check</text>
+  <text x="182" y="883" font-size="10.5" text-anchor="middle" fill="#5c6b73">→ re-register. No SSH, no downtime.</text>
+
+  <path d="M 60 760 L 26 760 L 26 292 L 56 292" fill="none" stroke="#455a64" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#arrow)"/>
+  <path d="M 310 850 L 384 850 L 384 600" fill="none" stroke="#455a64" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#arrow)"/>
+
+  <!-- ============ LEGEND ============ -->
+  <rect x="40" y="965" width="1420" height="86" rx="8" fill="#fafafa" stroke="#cfd8dc"/>
+  <text x="58" y="988" font-size="13" font-weight="bold" fill="#263238">Design notes</text>
+  <text x="58" y="1008" font-size="11.5" fill="#455a64">1. The SPA and the API are served from a single CloudFront domain, making them same-origin. The application authenticates with httpOnly cookies sent via withCredentials; across two domains the browser would drop them as third-party.</text>
+  <text x="58" y="1025" font-size="11.5" fill="#455a64">2. All compute and data resources sit in private subnets. The only internet-reachable component is the load balancer, whose security group accepts traffic solely from CloudFront's published edge ranges.</text>
+  <text x="58" y="1042" font-size="11.5" fill="#455a64">3. No SSH anywhere. Instance access and deployments both run through AWS Systems Manager, so port 22 is closed and no private keys exist to be leaked.</text>
+</svg>
