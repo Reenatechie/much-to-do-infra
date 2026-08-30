@@ -67,3 +67,50 @@ output "cloudfront_distribution_id" {
   description = "Distribution ID, used to invalidate the cache after a deploy."
   value       = module.frontend.distribution_id
 }
+
+output "github_actions_role_arn" {
+  description = "Add this to GitHub as the secret AWS_DEPLOY_ROLE_ARN."
+  value       = module.cicd.role_arn
+}
+
+output "deployer_access_key_id" {
+  description = "Add to GitHub as the secret AWS_ACCESS_KEY_ID."
+  value       = module.cicd.deployer_access_key_id
+}
+
+output "deployer_secret_access_key" {
+  description = "Add to GitHub as the secret AWS_SECRET_ACCESS_KEY."
+  value       = module.cicd.deployer_secret_access_key
+  sensitive   = true
+}
+
+##############################################################################
+# Assessor credentials - submit these, not your own.
+##############################################################################
+
+output "assessor_user_name" {
+  description = "Console sign-in username for the assessor."
+  value       = module.assessor.user_name
+}
+
+output "assessor_console_url" {
+  description = "Console sign-in page for the assessor."
+  value       = module.assessor.console_url
+}
+
+output "assessor_console_password" {
+  description = "Console password. Retrieve with: terraform output -raw assessor_console_password"
+  value       = module.assessor.console_password
+  sensitive   = true
+}
+
+output "assessor_access_key_id" {
+  description = "CLI access key ID for the assessor."
+  value       = module.assessor.access_key_id
+}
+
+output "assessor_secret_access_key" {
+  description = "CLI secret key. Retrieve with: terraform output -raw assessor_secret_access_key"
+  value       = module.assessor.secret_access_key
+  sensitive   = true
+}

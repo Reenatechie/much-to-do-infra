@@ -130,3 +130,19 @@ variable "secure_cookie" {
   type        = bool
   default     = false
 }
+
+##############################################################################
+# CI/CD
+##############################################################################
+
+variable "github_owner" {
+  description = "GitHub user or organisation that owns the application fork."
+  type        = string
+  default     = "Reenatechie"
+}
+
+variable "github_repo" {
+  description = "Name of the application repository."
+  type        = string
+  default     = "much-to-do"
+}

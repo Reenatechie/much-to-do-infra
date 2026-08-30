@@ -126,3 +126,36 @@ moved {
   from = module.compute.aws_ssm_parameter.secure_cookie
   to   = aws_ssm_parameter.secure_cookie
 }
+
+##############################################################################
+# CI/CD : an IAM role GitHub Actions assumes through OpenID Connect.
+#
+# No AWS access keys are stored in GitHub. Actions presents a short-lived
+# token proving which repository and branch it is running from, and AWS
+# exchanges it for temporary credentials.
+##############################################################################
+module "cicd" {
+  source = "./modules/cicd"
+
+  project_name       = var.project_name
+  aws_region         = var.aws_region
+  github_owner       = var.github_owner
+  github_repo        = var.github_repo
+  frontend_bucket    = module.frontend.bucket_name
+  frontend_bucket_arn = "arn:aws:s3:::${module.frontend.bucket_name}"
+  artifacts_bucket   = module.compute.artifacts_bucket
+  distribution_id    = module.frontend.distribution_id
+  distribution_arn   = module.frontend.distribution_arn
+  target_group_arn   = module.compute.target_group_arn
+  api_base_url       = "https://${module.frontend.cloudfront_domain_name}/api"
+}
+
+##############################################################################
+# Assessor : a read-only account so the project can be reviewed without
+# handing over personal credentials.
+##############################################################################
+module "assessor" {
+  source = "./modules/assessor"
+
+  project_name = var.project_name
+}
